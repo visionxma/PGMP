@@ -15,11 +15,12 @@ import {
   Image,
   Alert,
   Platform,
-  SafeAreaView
+  StatusBar,
 } from 'react-native';
 import axios from 'axios';
 import { Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const NewsItem = ({ item, onPress, onToggleSave, isSaved, colors }) => (
   <TouchableOpacity 
@@ -418,44 +419,49 @@ export default function NoticiasScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
              Carregando notícias do agronegócio...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <View style={styles.headerContent}>
-          <View style={[styles.logoContainer, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.logoText, { color: colors.primary }]}>🌾</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Header Container */}
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={[styles.logoContainer, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.logoText, { color: colors.primary }]}>🌾</Text>
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.greeting}>PGMP Notícias</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.surface }]}>
+                📰 Agronegócio em Destaque
+              </Text>
+            </View>
           </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={[styles.headerTitle, { color: colors.surface }]}>PGMP Notícias</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.surface }]}>
-              📰 Agronegócio em Destaque
-            </Text>
-          </View>
+          <TouchableOpacity 
+            style={[styles.refreshButton, { backgroundColor: colors.surface }]} 
+            onPress={handleRefresh} 
+            disabled={isRefreshing}
+            accessibilityLabel="Atualizar notícias"
+          >
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <FontAwesome name="refresh" size={20} color={colors.primary} />
+            )}
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={[styles.refreshButton, { backgroundColor: colors.surface }]} 
-          onPress={handleRefresh} 
-          disabled={isRefreshing}
-          accessibilityLabel="Atualizar notícias"
-        >
-          {isRefreshing ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <FontAwesome name="refresh" size={20} color={colors.primary} />
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* Filtros */}
@@ -581,7 +587,7 @@ export default function NoticiasScreen() {
           colors={colors} 
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -600,17 +606,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
+  headerContainer: {
+    backgroundColor: '#5D2A0A',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: Platform.OS === 'ios' ? 16 : 20,
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 25,
   },
   headerContent: {
     flexDirection: 'row',
@@ -632,9 +644,10 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 20,
+  greeting: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: 12,

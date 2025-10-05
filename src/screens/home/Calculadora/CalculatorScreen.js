@@ -10,15 +10,29 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   Modal,
   FlatList,
-  Dimensions
+  Dimensions,
+  StatusBar,
+  Platform
 } from 'react-native';
 import { FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 const { width } = Dimensions.get('window');
+
+// ========================================
+// CONFIGURAÇÃO DA PLANILHA GOOGLE SHEETS
+// ========================================
+// IMPORTANTE: Use o link de PUBLICAÇÃO CSV da sua planilha
+// Exemplo do formato correto:
+// https://docs.google.com/spreadsheets/d/e/2PACX-1vSEU_ID_AQUI/pub?output=csv
+
+const GOOGLE_SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vStjctRj9BlauzwbuIYkAlt60Uyib2NDtnxYflDF7MKBVUnCN9mGUVA-UvNI5uH0u0hK0lzh2beIb_t/pub?output=csv';
+
+// ALTERNATIVA: Se o link acima não funcionar, use:
+// https://docs.google.com/spreadsheets/d/SEU_ID/export?format=csv&gid=0
 
 export default function CalculatorScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
@@ -31,9 +45,8 @@ export default function CalculatorScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [sortOption, setSortOption] = useState('relevance'); // 'relevance', 'alphabetic_asc', 'alphabetic_desc'
+  const [sortOption, setSortOption] = useState('relevance');
 
-  // Cores do tema marrom (igual aos outros componentes PGMP)
   const colors = {
     primary: '#5D2A0A',
     secondary: '#7D4A2A',
@@ -47,16 +60,14 @@ export default function CalculatorScreen({ navigation }) {
     success: '#4CAF50'
   };
 
-  // Lista expandida de produtos baseados na CONAB - UNIDADES CORRIGIDAS CONFORME NORMAS OFICIAIS
-  const conabProductsDatabase = [
-    // GRÃOS (principais culturas) - Unidades conforme Portaria CONAB
+  // Base de dados local (fallback)
+  const localProductsDatabase = [
     {
       id: 1,
       name: 'Soja',
       unit: 'saca de 60 kg',
       minPrice: 89.50,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 10
     },
@@ -66,7 +77,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 52.30,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 10
     },
@@ -76,7 +86,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 185.40,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 8
     },
@@ -86,7 +95,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 195.60,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 8
     },
@@ -96,7 +104,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 50 kg (em casca)',
       minPrice: 65.80,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 9
     },
@@ -106,7 +113,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 68.90,
       region: 'Sul',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 7
     },
@@ -116,7 +122,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 165.20,
       region: 'Nordeste',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 6
     },
@@ -126,19 +131,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 45.80,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Grãos',
       relevance: 5
     },
-    
-    // OLEAGINOSAS - Unidades CONAB
     {
       id: 9,
       name: 'Amendoim em Casca',
       unit: 'saca de 25 kg',
       minPrice: 85.40,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Oleaginosas',
       relevance: 6
     },
@@ -148,7 +149,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 78.60,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Oleaginosas',
       relevance: 5
     },
@@ -158,7 +158,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 92.30,
       region: 'Nordeste',
-      lastUpdate: '2024-01-15',
       category: 'Oleaginosas',
       relevance: 4
     },
@@ -168,19 +167,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 275.50,
       region: 'Nordeste',
-      lastUpdate: '2024-01-15',
       category: 'Oleaginosas',
       relevance: 3
     },
-    
-    // FIBRAS - Unidades CONAB
     {
       id: 13,
       name: 'Algodão em Caroço',
       unit: 'arroba (15 kg)',
       minPrice: 95.20,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Fibras',
       relevance: 8
     },
@@ -190,19 +185,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'arroba (15 kg)',
       minPrice: 189.70,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Fibras',
       relevance: 7
     },
-    
-    // ESPECIAIS/PERMANENTES - Unidades CONAB
     {
       id: 15,
       name: 'Cacau Cultivado (Amêndoa)',
       unit: 'arroba (15 kg)',
       minPrice: 189.40,
       region: 'Bahia',
-      lastUpdate: '2024-01-15',
       category: 'Especiais',
       relevance: 6
     },
@@ -212,7 +203,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg (beneficiado)',
       minPrice: 520.00,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Especiais',
       relevance: 9
     },
@@ -222,19 +212,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg (beneficiado)',
       minPrice: 385.60,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Especiais',
       relevance: 7
     },
-    
-    // TUBÉRCULOS - Unidades CONAB
     {
       id: 18,
       name: 'Mandioca',
       unit: 'tonelada',
       minPrice: 420.50,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Tubérculos',
       relevance: 7
     },
@@ -244,19 +230,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 50 kg',
       minPrice: 78.30,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Tubérculos',
       relevance: 4
     },
-    
-    // OUTROS PRODUTOS CONAB
     {
       id: 20,
       name: 'Borracha Natural Cultivada',
       unit: 'kg (látex coagulado)',
       minPrice: 4.85,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Outros',
       relevance: 3
     },
@@ -266,7 +248,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'kg',
       minPrice: 2.45,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Outros',
       relevance: 2
     },
@@ -276,19 +257,15 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'litro',
       minPrice: 1.85,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Outros',
       relevance: 8
     },
-    
-    // SEMENTES (conforme CONAB)
     {
       id: 23,
       name: 'Semente de Soja',
       unit: 'saca de 60 kg',
       minPrice: 125.50,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Sementes',
       relevance: 6
     },
@@ -298,7 +275,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 89.30,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Sementes',
       relevance: 5
     },
@@ -308,7 +284,6 @@ export default function CalculatorScreen({ navigation }) {
       unit: 'saca de 60 kg',
       minPrice: 245.60,
       region: 'Nacional',
-      lastUpdate: '2024-01-15',
       category: 'Sementes',
       relevance: 4
     }
@@ -322,129 +297,192 @@ export default function CalculatorScreen({ navigation }) {
     applyFiltersAndSort();
   }, [products, searchQuery, sortOption]);
 
-  // Debug: verificar se todos os produtos estão sendo carregados
-  useEffect(() => {
-    console.log('Total de produtos carregados:', products.length);
-    console.log('Produtos filtrados:', filteredProducts.length);
-  }, [products, filteredProducts]);
+  // Função CORRIGIDA para buscar dados da planilha Google Sheets
+const fetchFromGoogleSheets = async () => {
+  try {
+    console.log('🔄 Buscando dados da planilha Google Sheets...');
+    
+    // ADICIONAR timestamp para evitar cache do navegador/app
+    const timestamp = new Date().getTime();
+    const urlWithCache = `${GOOGLE_SHEETS_CSV_URL}&cacheBust=${timestamp}`;
+    
+    const response = await axios.get(urlWithCache, {
+      timeout: 15000,
+      headers: {
+        'Accept': 'text/csv,text/plain',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
+    // Resto do código permanece igual...
+    const csvText = response.data;
+    const lines = csvText.trim().split('\n');
+    
+    if (lines.length < 2) {
+      throw new Error('Planilha vazia ou formato inválido');
+    }
+
+    const productsFromSheet = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
       
-      // Simular carregamento de dados da CONAB
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // SEMPRE carregar a base completa de produtos
-      setProducts(conabProductsDatabase);
-      
-      // Carregar dados salvos localmente (apenas para preços atualizados)
-      const savedData = await AsyncStorage.getItem('pgmp_conab_data');
-      const savedUpdate = await AsyncStorage.getItem('pgmp_conab_lastUpdate');
-      
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        // Verificar se os dados salvos têm a mesma quantidade de produtos
-        if (parsedData.length === conabProductsDatabase.length) {
-          setProducts(parsedData);
-        } else {
-          // Se a quantidade não bate, usar dados atualizados e salvar
-          setProducts(conabProductsDatabase);
-          await AsyncStorage.setItem('pgmp_conab_data', JSON.stringify(conabProductsDatabase));
+      if (values.length >= 7) {
+        const id = parseInt(values[0]);
+        const name = values[1];
+        const unit = values[2];
+        const minPrice = parseFloat(values[3]);
+        const region = values[4];
+        const category = values[5];
+        const relevance = parseInt(values[6]);
+        
+        if (id && name && unit && !isNaN(minPrice) && region && category && !isNaN(relevance)) {
+          productsFromSheet.push({
+            id,
+            name,
+            unit,
+            minPrice,
+            region,
+            category,
+            relevance,
+            lastUpdate: new Date().toISOString()
+          });
         }
-      } else {
-        await AsyncStorage.setItem('pgmp_conab_data', JSON.stringify(conabProductsDatabase));
       }
-      
-      if (savedUpdate) {
-        setLastUpdate(savedUpdate);
-      } else {
-        const now = new Date().toISOString();
-        setLastUpdate(now);
-        await AsyncStorage.setItem('pgmp_conab_lastUpdate', now);
-      }
-      
-      console.log('Produtos carregados:', conabProductsDatabase.length);
-      
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os dados dos preços mínimos');
-      setProducts(conabProductsDatabase); // Fallback para dados padrão
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const refreshData = async () => {
-    try {
-      setIsRefreshing(true);
-      
-      // Simular atualização de dados da CONAB (busca dados reais da API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Atualizar preços com pequenas variações (simulação de dados reais)
-      const updatedProducts = conabProductsDatabase.map(product => ({
-        ...product,
-        minPrice: product.minPrice * (0.95 + Math.random() * 0.1), // Variação de ±5%
-        lastUpdate: new Date().toISOString()
-      }));
-      
-      setProducts(updatedProducts);
-      const now = new Date().toISOString();
-      setLastUpdate(now);
-      
-      await AsyncStorage.setItem('pgmp_conab_data', JSON.stringify(updatedProducts));
-      await AsyncStorage.setItem('pgmp_conab_lastUpdate', now);
-      
-      console.log('Dados atualizados:', updatedProducts.length, 'produtos');
-      Alert.alert(' Atualizado', `Preços mínimos atualizados com dados da CONAB! (${updatedProducts.length} produtos)`);
-    } catch (error) {
-      console.error('Erro ao atualizar dados:', error);
-      Alert.alert('❌ Erro', 'Não foi possível conectar com a CONAB');
-    } finally {
-      setIsRefreshing(false);
+    console.log(`✅ ${productsFromSheet.length} produtos extraídos da planilha`);
+    
+    if (productsFromSheet.length === 0) {
+      throw new Error('Nenhum produto válido encontrado na planilha');
     }
-  };
+    
+    return productsFromSheet;
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar planilha:', error.message);
+    throw error;
+  }
+};
+
+const loadData = async () => {
+  console.log('═══════════════════════════════════');
+  console.log('🚀 INICIANDO loadData()');
+  console.log('═══════════════════════════════════');
+
+  try {
+    setLoading(true);
+    
+    let productsToLoad = [];
+    let dataSource = 'local';
+    
+    // SEMPRE tentar carregar da planilha Google Sheets primeiro
+    try {
+      console.log('🔄 Tentando carregar da planilha online...');
+      productsToLoad = await fetchFromGoogleSheets();
+      dataSource = 'sheets';
+      
+      // Salvar no cache SEMPRE que conseguir buscar da planilha
+      await AsyncStorage.setItem('pgmp_conab_data', JSON.stringify(productsToLoad));
+      console.log(`✅ ${productsToLoad.length} produtos salvos no cache`);
+      
+    } catch (sheetError) {
+      console.warn('⚠️ Falha ao carregar planilha:', sheetError.message);
+      
+      // Só usar cache se REALMENTE falhou a conexão
+      const cachedData = await AsyncStorage.getItem('pgmp_conab_data');
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        if (parsed.length > 0) {
+          productsToLoad = parsed;
+          dataSource = 'cache';
+          console.log(`📦 Usando ${parsed.length} produtos do cache`);
+        }
+      }
+      
+      // Se não tem cache, usar base local
+      if (productsToLoad.length === 0) {
+        productsToLoad = localProductsDatabase;
+        dataSource = 'local';
+        console.log(`⚠️ Usando base local (${localProductsDatabase.length} produtos)`);
+      }
+    }
+    
+    setProducts(productsToLoad);
+    
+    const now = new Date().toISOString();
+    setLastUpdate(now);
+    await AsyncStorage.setItem('pgmp_conab_lastUpdate', now);
+    
+    // REMOVER O ALERT - Ele só aparece quando carrega pela primeira vez com sucesso
+    // Isso evita que fique mostrando alert toda vez que entra na tela
+    
+  } catch (error) {
+    console.error('❌ Erro crítico ao carregar dados:', error);
+    // Em caso de erro crítico, usar base local
+    setProducts(localProductsDatabase);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const refreshData = async () => {
+  try {
+    setIsRefreshing(true);
+    
+    const updatedProducts = await fetchFromGoogleSheets();
+    
+    setProducts(updatedProducts);
+    const now = new Date().toISOString();
+    setLastUpdate(now);
+    
+    await AsyncStorage.setItem('pgmp_conab_data', JSON.stringify(updatedProducts));
+    await AsyncStorage.setItem('pgmp_conab_lastUpdate', now);
+    
+    // Mostrar feedback de sucesso
+    Alert.alert(
+      '✅ Atualizado', 
+      `${updatedProducts.length} produtos sincronizados!`
+    );
+  } catch (error) {
+    console.error('❌ Erro ao atualizar:', error);
+    Alert.alert(
+      '⚠️ Erro na Atualização', 
+      'Verifique sua conexão com a internet. Usando dados em cache.'
+    );
+  } finally {
+    setIsRefreshing(false);
+  }
+};
 
   const applyFiltersAndSort = () => {
-    let filtered = [...products]; // Criar uma cópia para evitar mutação
-    
-    console.log('Aplicando filtros. Total de produtos:', filtered.length);
+    let filtered = [...products];
 
-    // Aplicar filtro de busca
     if (searchQuery.trim()) {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.region.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      console.log('Após busca:', filtered.length, 'produtos encontrados para:', searchQuery);
     }
 
-    // Aplicar ordenação - CORRIGINDO A LÓGICA
     switch (sortOption) {
       case 'relevance':
         filtered = filtered.sort((a, b) => b.relevance - a.relevance);
-        console.log('Ordenação: Por relevância');
         break;
       case 'alphabetic_asc':
-        // CRESCENTE: A-Z (a.name.localeCompare(b.name))
         filtered = filtered.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-        console.log('Ordenação: Alfabética crescente (A-Z)');
         break;
       case 'alphabetic_desc':
-        // DECRESCENTE: Z-A (b.name.localeCompare(a.name))
         filtered = filtered.sort((a, b) => b.name.localeCompare(a.name, 'pt-BR'));
-        console.log('Ordenação: Alfabética decrescente (Z-A)');
-        break;
-      default:
-        console.log('Ordenação: Padrão');
         break;
     }
 
-    console.log('Produtos filtrados final:', filtered.length);
-    console.log('Primeiros 5 produtos:', filtered.slice(0, 5).map(p => p.name));
-    
     setFilteredProducts(filtered);
   };
 
@@ -458,9 +496,8 @@ export default function CalculatorScreen({ navigation }) {
     const unitPrice = selectedProduct.minPrice;
     const totalValue = qty * unitPrice;
     
-    // Cálculos adicionais mais precisos
-    const estimatedProfit = totalValue * 0.15; // 15% de margem estimada
-    const taxes = totalValue * 0.08; // 8% de impostos estimados
+    const estimatedProfit = totalValue * 0.15;
+    const taxes = totalValue * 0.08;
     const netValue = totalValue - taxes;
     
     setResults({
@@ -496,7 +533,7 @@ export default function CalculatorScreen({ navigation }) {
 
   const SortOptionsModal = () => (
     <View style={styles.sortContainer}>
-      <Text style={[styles.sortTitle, { color: colors.text }]}>📊 Ordenar por:</Text>
+      <Text style={[styles.sortTitle, { color: colors.text }]}>Ordenar por:</Text>
       <View style={styles.sortOptions}>
         <TouchableOpacity
           style={[styles.sortOption, sortOption === 'relevance' && { backgroundColor: colors.primary }]}
@@ -505,7 +542,7 @@ export default function CalculatorScreen({ navigation }) {
           <Text style={[styles.sortOptionText, { 
             color: sortOption === 'relevance' ? colors.surface : colors.text 
           }]}>
-            🏆 Mais Relevantes
+            Mais Relevantes
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -515,7 +552,7 @@ export default function CalculatorScreen({ navigation }) {
           <Text style={[styles.sortOptionText, { 
             color: sortOption === 'alphabetic_asc' ? colors.surface : colors.text 
           }]}>
-            🔤 A-Z
+            A-Z
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -525,7 +562,7 @@ export default function CalculatorScreen({ navigation }) {
           <Text style={[styles.sortOptionText, { 
             color: sortOption === 'alphabetic_desc' ? colors.surface : colors.text 
           }]}>
-            🔡 Z-A
+            Z-A
           </Text>
         </TouchableOpacity>
       </View>
@@ -543,7 +580,7 @@ export default function CalculatorScreen({ navigation }) {
         <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              🌾 Selecionar Produto ({filteredProducts.length})
+              Selecionar Produto ({filteredProducts.length})
             </Text>
             <TouchableOpacity
               onPress={() => setShowProductModal(false)}
@@ -559,7 +596,7 @@ export default function CalculatorScreen({ navigation }) {
               color: colors.text, 
               borderColor: colors.border 
             }]}
-            placeholder="🔍 Buscar produto, categoria ou região..."
+            placeholder="Buscar produto, categoria ou região..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -607,7 +644,7 @@ export default function CalculatorScreen({ navigation }) {
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                  🔍 Nenhum produto encontrado para "{searchQuery}"
+                  Nenhum produto encontrado para "{searchQuery}"
                 </Text>
               </View>
             )}
@@ -619,21 +656,24 @@ export default function CalculatorScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            📊 Carregando dados atualizados da CONAB...
+            Carregando dados atualizados...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.headerContainer, { backgroundColor: colors.primary }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      
+      {/* Header Container */}
+      <View style={styles.headerContainer}>
         <View style={styles.header}>
           <TouchableOpacity
             style={[styles.backButton, { backgroundColor: colors.surface }]}
@@ -644,14 +684,14 @@ export default function CalculatorScreen({ navigation }) {
           
           <View style={styles.headerContent}>
             <View style={[styles.logoContainer, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.logoText, { color: colors.primary }]}>📊</Text>
+              <FontAwesome name="calculator" size={20} color={colors.primary} />
             </View>
             <View style={styles.headerTextContainer}>
-              <Text style={[styles.headerTitle, { color: colors.surface }]}>
+              <Text style={styles.greeting}>
                 PGMP Calculadora
               </Text>
               <Text style={[styles.headerSubtitle, { color: colors.surface }]}>
-                💰 Preços Mínimos CONAB
+                Preços Mínimos CONAB
               </Text>
             </View>
           </View>
@@ -680,12 +720,12 @@ export default function CalculatorScreen({ navigation }) {
             </Text>
           </View>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            Esta calculadora utiliza dados oficiais da CONAB com {products.length} produtos cadastrados. 
-            Os preços são atualizados automaticamente e servem como referência para políticas de garantia de preços mínimos.
+            Esta calculadora utiliza dados atualizados automaticamente via Google Sheets com {products.length} produtos cadastrados. 
+            Os preços são sincronizados em tempo real.
           </Text>
           {lastUpdate && (
             <Text style={[styles.lastUpdateText, { color: colors.textSecondary }]}>
-              📅 Última atualização: {formatDate(lastUpdate)}
+              Última atualização: {formatDate(lastUpdate)}
             </Text>
           )}
         </View>
@@ -693,7 +733,7 @@ export default function CalculatorScreen({ navigation }) {
         {/* Calculator Card */}
         <View style={[styles.calculatorCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.cardTitle, { color: colors.text }]}>
-             Calculadora de Preços ({products.length} produtos)
+            Calculadora de Preços ({products.length} produtos)
           </Text>
           
           {/* Product Selection */}
@@ -710,7 +750,7 @@ export default function CalculatorScreen({ navigation }) {
                 styles.productSelectorText, 
                 { color: selectedProduct ? colors.text : colors.textSecondary }
               ]}>
-                {selectedProduct ? selectedProduct.name : '🌾 Selecionar produto...'}
+                {selectedProduct ? selectedProduct.name : 'Selecionar produto...'}
               </Text>
               <FontAwesome name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -768,7 +808,7 @@ export default function CalculatorScreen({ navigation }) {
         {results && (
           <View style={[styles.resultsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]}>
-              📋 Resultados do Cálculo
+              Resultados do Cálculo
             </Text>
             
             <View style={styles.resultRow}>
@@ -801,7 +841,7 @@ export default function CalculatorScreen({ navigation }) {
             
             <View style={[styles.additionalInfo, { backgroundColor: colors.background }]}>
               <Text style={[styles.additionalInfoTitle, { color: colors.text }]}>
-                💡 Informações Adicionais:
+                Informações Adicionais:
               </Text>
               
               <View style={styles.infoRow}>
@@ -832,7 +872,7 @@ export default function CalculatorScreen({ navigation }) {
               </View>
               
               <Text style={[styles.recommendation, { color: colors.primary }]}>
-                💬 {results.recommendation}
+                {results.recommendation}
               </Text>
             </View>
           </View>
@@ -842,16 +882,16 @@ export default function CalculatorScreen({ navigation }) {
         <View style={[styles.footerInfo, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <FontAwesome name="exclamation-triangle" size={16} color={colors.error} />
           <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-            ⚠️ Os valores são baseados nos preços mínimos oficiais da CONAB e servem como referência. 
-            Consulte sempre fontes oficiais para informações atualizadas e decisões comerciais.
+            Os valores são atualizados automaticamente via Google Sheets. 
+            Consulte sempre fontes oficiais para decisões comerciais.
           </Text>
         </View>
       </ScrollView>
 
       <ProductModal />
-    </SafeAreaView>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -883,16 +923,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: 25,
   },
   backButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
   },
   headerContent: {
     flexDirection: 'row',
@@ -908,30 +948,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  logoText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
   headerTextContainer: {
     flex: 1,
   },
-  headerTitle: {
+  greeting: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 12,
     opacity: 0.9,
     marginTop: 2,
   },
   refreshButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
   },
   scrollContainer: {
     flex: 1,

@@ -495,32 +495,34 @@ PERGUNTA DO USUÁRIO: ${userMessage}`;
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.aiIndicator, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.aiText, { color: colors.primary }]}>IA</Text>
+      {/* Header Container */}
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.aiIndicator, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.aiText, { color: colors.primary }]}>IA</Text>
+            </View>
+            <View>
+              <Text style={styles.greeting}>Chat IA</Text>
+              <Text style={[styles.headerSubtext, { color: colors.surface }]}>
+                {isLoading ? '🤖 Pensando...' : '💬 Assistente Inteligente'}
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text style={[styles.headerText, { color: colors.surface }]}>Chat IA</Text>
-            <Text style={[styles.headerSubtext, { color: colors.surface }]}>
-              {isLoading ? '🤖 Pensando...' : '💬 Assistente Inteligente'}
-            </Text>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              onPress={() => setShowHistory(true)} 
+              style={[styles.historyButton, { backgroundColor: colors.surface }]}
+            >
+              <Ionicons name='time' size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleDeleteChat} 
+              style={[styles.deleteButton, { backgroundColor: colors.surface }]}
+            >
+              <Ionicons name='add' size={24} color={colors.primary} />
+            </TouchableOpacity>
           </View>
-        </View>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity 
-            onPress={() => setShowHistory(true)} 
-            style={[styles.historyButton, { backgroundColor: colors.surface }]}
-          >
-            <Ionicons name='time' size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={handleDeleteChat} 
-            style={[styles.deleteButton, { backgroundColor: colors.surface }]}
-          >
-            <Ionicons name='add' size={24} color={colors.primary} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -678,19 +680,25 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  header: { 
-    paddingVertical: 15, 
-    paddingHorizontal: 15, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+  // NOVO ESTILO: Container do Header
+  headerContainer: {
+    backgroundColor: '#5D2A0A',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  // ATUALIZADO: Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 40,
+    paddingBottom: 25,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -713,9 +721,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  headerText: { 
-    fontSize: 20, 
-    fontWeight: 'bold' 
+  // NOVO ESTILO: Greeting
+  greeting: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   headerSubtext: {
     fontSize: 12,
