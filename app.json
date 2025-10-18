@@ -3,16 +3,20 @@
     "name": "PGMP",
     "slug": "PGMP",
     "version": "1.0.0",
-    "extra": {
-      "eas": {
-        "projectId": "99a101e8-ca97-4bc6-b9f2-1913e7effd80"
-      }
-    },
     "plugins": [
       "expo-localization"
     ],
+      "ios": {
+      "bundleIdentifier": "com.pgpm.pgmp"
+    },
     "android": {
       "package": "com.PGPM.PGMP"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9802e5cc-07c7-46e8-b4e8-6b34d29f1872"
+      }
+    },
+    "owner": "pgpm"
   }
 }
