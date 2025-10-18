@@ -1,4 +1,4 @@
-package com.pgmp
+package com.PGPM.PGMP
 
 import android.os.Build
 import android.os.Bundle

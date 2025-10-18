@@ -22,7 +22,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // CONFIGURAÇÃO DA API GEMINI (GRATUITA)
-const GEMINI_API_KEY = 'AIzaSyBn2YSz5xm9Qmg0QBMU-f0tbUi_RmoPuIc';
+const GEMINI_API_KEY = 'AIzaSyCLLMT3UGzmCB7ibfx0DET5jD3CYYv8xHk';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 const AIScreen = () => {

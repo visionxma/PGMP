@@ -1,4 +1,4 @@
-package com.pgmp
+package com.PGPM.PGMP
 
 import android.app.Application
 import android.content.res.Configuration

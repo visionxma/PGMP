@@ -2,6 +2,17 @@
   "expo": {
     "name": "PGMP",
     "slug": "PGMP",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "99a101e8-ca97-4bc6-b9f2-1913e7effd80"
+      }
+    },
+    "plugins": [
+      "expo-localization"
+    ],
+    "android": {
+      "package": "com.PGPM.PGMP"
+    }
   }
 }

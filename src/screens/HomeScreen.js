@@ -1,4 +1,5 @@
 //C:\PROJETOS\PGMP\src\screens\HomeScreen.js
+
 import React from "react";
 import { 
   View, 
@@ -34,7 +35,7 @@ export default function HomeScreen({ navigation, route }) {
     { 
       label: "Conteúdo", 
       screen: "Content", 
-      icon: "book-open",
+      icon: "play-circle",
       iconType: "FontAwesome5"
     },
     { 
@@ -124,14 +125,21 @@ export default function HomeScreen({ navigation, route }) {
           </Text>
         </View>
 
-        {/* Botão de configurações no final */}
+        {/* Botão de configurações - CORRIGIDO */}
         <TouchableOpacity
           style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings')}
+          onPress={() => {
+            console.log('Navegando para Settings...');
+            navigation.navigate('Settings');
+          }}
+          activeOpacity={0.7}
         >
           <MaterialCommunityIcons name="cog" size={24} color="#fff" />
           <Text style={styles.settingsButtonText}>Configurações</Text>
         </TouchableOpacity>
+
+        {/* Espaçamento extra para não ficar colado na bottom tab */}
+        <View style={{ height: 20 }} />
       </ScrollView>
     </View>
   );
@@ -143,7 +151,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   headerContainer: {
-    backgroundColor: '#5D2A0A', // Marrom escuro
+    backgroundColor: '#5D2A0A',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     shadowColor: '#000',
@@ -183,6 +191,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingBottom: 30,
   },
   gridContainer: {
     marginBottom: 30,
@@ -193,7 +202,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   menuButton: {
-    backgroundColor: '#7D4A2A', // Marrom médio
+    backgroundColor: '#7D4A2A',
     width: '31%',
     aspectRatio: 1,
     justifyContent: 'center',
@@ -215,7 +224,7 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   infoContainer: {
-    backgroundColor: '#8B5A3A', // Marrom claro
+    backgroundColor: '#8B5A3A',
     padding: 20,
     borderRadius: 15,
     marginBottom: 20,
@@ -241,9 +250,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 15,
+    padding: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   settingsButtonText: {
     color: '#FFFFFF',
